@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<style>
+    #table-div table, #table-div th, #table-div td {
+        border: 1px solid black;
+        border-collapse: collapse;
+        padding: 5px;
+    }
+
+    #table-div input {
+        width: 100px;
+    }
+
+    #table-div button {
+        margin-left: 5px;
+        margin-right: 5px;
+    }
+
+    .center {
+        margin: auto;
+    }
+</style>
+<body>
+
+<table id="form" class="center">
+    <tr>
+        <td>
+            <label>Make:</label>
+        </td>
+        <td>
+            <input type="text" id="make">
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <label>Model:</label>
+        </td>
+        <td>
+            <input type="text" id="model">
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <label>Price:</label>
+        </td>
+        <td>
+            <input type="text" id="price">
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <label>Year:</label>
+        </td>
+        <td>
+            <input type="text" id="year">
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <label>Body:</label>
+        </td>
+        <td>
+            <input type="text" id="body">
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <label>Fuel:</label>
+        </td>
+        <td>
+            <input type="text" id="fuel">
+        </td>
+    </tr>
+    <tr>
+        <td></td>
+        <td>
+            <button onclick="addRow()">Add</button>
+        </td>
+    </tr>
+</table>
+<br/>
+<table class="center">
+    <tr>
+        <td>
+            <input type="text" id="filter">
+        </td>
+        <td>
+            <button onclick="renderTable()">Search</button>
+        </td>
+        <td>
+            <button onclick="clearFilter()">Clear</button>
+        </td>
+    </tr>
+</table>
+<br/>
+<table class="center">
+    <tr>
+        <td>
+            <button onclick="previousPage()"><</button>
+        </td>
+        <td>
+            <label id="page"></label>
+        </td>
+        <td>
+            <button onclick="nextPage()">></button>
+        </td>
+        <td>
+            <select name="size" id="page-size" onchange="updatePageSize(this.value)">
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="5">5</option>
+                <option value="10">10</option>
+                <option value="20">20</option>
+            </select>
+        </td>
+    </tr>
+</table>
+<br/>
+<div id="table-div"></div>
+
+<script>
+    let keys = ["id", "make", "model", "price", "year", "body", "fuel"]
+    let data = [
+        {
+            "id": "1",
+            "make": "Audi",
+            "model": "A4",
+            "price": "15000",
+            "year": "2013",
+            "body": "Sedan",
+            "fuel": "Diesel",
+        },
+        {
+            "id": "2",
+            "make": "BMW",
+            "model": "5",
+            "price": "30000",
+            "year": "2018",
+            "body": "Sedan",
+            "fuel": "Diesel",
+        }
+    ]
+
+    let editId = null
+    let sortedBy = "id"
+    let orderByAsc = true
+    let arrUp = "&uarr;"
+    let arrDown = "&darr;"
+    let pageSize = 10
+    let pageNumber = 1
+
+    // ==========
+
+    renderTable()
+
+    // ==========
+
+    function updatePageSize(size) {
+        pageSize = parseInt(size)
+        renderTable()
+    }
+
+    function previousPage() {
+        if (pageNumber > 1) {
+            pageNumber--
+        }
+        renderTable()
+    }
+
+    function nextPage() {
+        if (pageNumber < Math.ceil(data.length / pageSize)) {
+            pageNumber++
+        }
+        renderTable()
+    }
+
+    function renderTable() {
+        document.getElementById("page").innerHTML = `${pageNumber} of ${Math.ceil(data.length / pageSize)}`
+        document.getElementById("page-size").value = pageSize
+
+        let filterValue = document.getElementById("filter").value
+        let filteredData = filterData(data, filterValue)
+
+        let sortedFilteredData = sortData(filteredData)
+
+        let paginatedSortedFilteredData = paginateData(sortedFilteredData)
+
+        let table = createTable(keys, paginatedSortedFilteredData)
+        document.getElementById("table-div").innerHTML = ""
+        document.getElementById("table-div").append(table)
+    }
+
+    function paginateData(data) {
+        console.log("size: " + pageSize)
+        console.log("number: " + pageNumber)
+        let from = (pageNumber - 1) * pageSize
+        let to = from + pageSize
+        console.log("from: " + from)
+        console.log("to: " + to)
+        return data.slice(from, to)
+    }
+
+    function createTable(keys, data) {
+        let table = document.createElement("table")
+        table.id = "car-table"
+        table.className = "center"
+
+        let header = createTableHeaderRow(keys)
+        table.append(header)
+
+        data.map(e => {
+            let values = keys.map(key => e[key])
+            let row
+            if (editId && e["id"] === editId) {
+                row = createEditableTableRow(values)
+            } else {
+                row = createTableRow(values)
+            }
+            table.append(row)
+        })
+
+        return table
+    }
+
+    function createTableHeaderRow(values) {
+        let tr = document.createElement("tr")
+        values.map(value => tr.append(createHeaderCell(value)))
+        tr.append(createHeaderCell("actions"))
+        return tr
+    }
+
+    function createTableRow(values) {
+        let tr = document.createElement("tr")
+        values.map(value => tr.append(createCell(value)))
+        let td = document.createElement("td")
+        td.append(createButton("Edit", editRow, values[0]))
+        td.append(createButton("Delete", deleteRow, values[0]))
+        tr.append(td)
+        return tr
+    }
+
+    function createEditableTableRow(values) {
+        let tr = document.createElement("tr")
+        tr.append(createCell(values[0]))
+        values.slice(1).map((value, index) => {
+            let inputId = "edit-" + keys[index + 1]
+            let td = createInputCell(value, inputId)
+            tr.append(td)
+        })
+
+        let td = document.createElement("td")
+        td.append(createButton("Save", saveRow, values[0]))
+        td.append(createButton("Delete", deleteRow, values[0]))
+        tr.append(td)
+        return tr
+    }
+
+    function createButton(name, func, id) {
+        let btn = document.createElement("button")
+        btn.innerHTML = name
+        btn.addEventListener("click", function () {
+            func(id)
+        })
+        return btn
+    }
+
+    function deleteRow(id) {
+        data = data.filter(e => e.id !== id)
+        renderTable()
+    }
+
+    function editRow(id) {
+        editId = id
+        renderTable()
+    }
+
+    function saveRow(id) {
+        editId = null
+        let row = {}
+        row["id"] = id
+        keys.slice(1).map(key => {
+            row[key] = document.getElementById("edit-" + key).value
+        })
+        data.map(e => {
+            if (e["id"] === row["id"]) {
+                keys.slice(1).map(key => {
+                    e[key] = row[key]
+                })
+            }
+        })
+        renderTable()
+    }
+
+    function addRow() {
+        let row = {}
+        row["id"] = generateNextId()
+        keys.slice(1).map(key => {
+            row[key] = document.getElementById(key).value
+        })
+        data.push(row)
+        renderTable()
+    }
+
+    function generateNextId() {
+        let nextId = "1"
+        let idList = data.map(e => parseInt(e.id))
+        if (idList.length !== 0) {
+            let maxId = Math.max(...idList)
+            nextId = (maxId + 1).toString()
+        }
+        return nextId
+    }
+
+    function createHeaderCell(name) {
+        let th = document.createElement("th")
+        if (sortedBy === name) {
+            th.innerHTML = name + (orderByAsc ? arrUp : arrDown)
+        } else {
+            th.innerHTML = name
+        }
+        th.addEventListener("click", function () {
+            updateSortParameters(name)
+            renderTable()
+        })
+        return th
+    }
+
+    function updateSortParameters(columnName) {
+        if (sortedBy === columnName) {
+            orderByAsc = !orderByAsc
+        } else {
+            orderByAsc = true
+        }
+        sortedBy = columnName
+    }
+
+    function createCell(value) {
+        let td = document.createElement("td")
+        td.innerHTML = value
+        return td
+    }
+
+    function createInputCell(value, inputId) {
+        let input = document.createElement("input")
+        input.value = value
+        input.id = inputId
+        let td = document.createElement("td")
+        td.append(input)
+        return td
+    }
+
+    function sortData(data) {
+        return data.sort((a, b) => {
+            let result = orderByAsc ? -1 : 1
+            if (a[sortedBy] > b[sortedBy]) {
+                result = -result
+            } else if (a[sortedBy] === b[sortedBy]) {
+                result = 0
+            }
+            return result
+        })
+    }
+
+    function filterData(data, filterValue) {
+        if (filterValue === "") {
+            return data
+        } else {
+            return data.filter(e => {
+                let found = false
+                keys.map(key => {
+                    if (e[key].match(filterValue)) {
+                        found = true
+                    }
+                })
+                return found
+            })
+        }
+    }
+
+    function clearFilter() {
+        document.getElementById("filter").value = ""
+        renderTable()
+    }
+</script>
+
+</body>
+</html>
